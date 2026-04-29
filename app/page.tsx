@@ -296,12 +296,39 @@ export default function Home() {
 
       {/* Input Area */}
       <div className="sticky bottom-0 bg-gradient-to-t from-background via-background to-transparent pt-4">
-        <div className="max-w-3xl mx-auto">
-          <ChatInput
-            onSend={handleSend}
-            isLoading={isLoading}
-            placeholder="例: 三島駅 5km以内 朝食付き ダブルベッド"
-          />
+        <div className="max-w-3xl mx-auto px-4 pb-4">
+
+          <div className="flex items-end gap-2 relative">
+
+            {/* Chat Input */}
+            <div className="flex-1">
+              <ChatInput
+                onSend={handleSend}
+                isLoading={isLoading}
+              />
+            </div>
+
+            {/* 条件ボタン + ヒント */}
+            <div className="relative group">
+
+              <button className="h-10 px-3 rounded-full border border-border bg-card text-sm hover:bg-secondary transition">
+                条件
+              </button>
+
+              {/* 💬 ホバーで出る吹き出し */}
+              <div className="absolute bottom-full mb-2 right-0 opacity-0 group-hover:opacity-100 transition pointer-events-none">
+                <div className="relative bg-card border border-border rounded-lg px-3 py-2 text-xs text-muted-foreground shadow-md whitespace-nowrap">
+
+                  細かい条件指定はコチラ
+
+                  <div className="absolute -bottom-1 right-3 w-3 h-3 bg-card border-b border-r border-border rotate-45" />
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+
         </div>
       </div>
     </div>
