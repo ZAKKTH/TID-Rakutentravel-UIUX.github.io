@@ -198,7 +198,7 @@ export default function Home() {
               </div>
 
               <div className="space-y-3 w-full max-w-md">
-                <p className="text-xs font-medium text-muted-foreground">例えば...</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase">例えば...</p>
                 <div className="flex flex-col gap-2">
                   {exampleQueries.map((example) => (
                     <button
@@ -210,6 +210,9 @@ export default function Home() {
                     </button>
                   ))}
                 </div>
+                <p className="text-xs text-muted-foreground pt-1">
+                  下のボタンからタグで条件を組み合わせることもできます
+                </p>
               </div>
             </div>
           ) : (
