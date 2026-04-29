@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react'
 import { SearchInput } from '@/components/search-input'
 import { HotelGrid } from '@/components/hotel-grid'
+import { CriteriaParser } from '@/components/criteria-parser'
+import { EssentialQuestions } from '@/components/essential-questions'
 
 interface Hotel {
   id: string
@@ -127,10 +129,10 @@ export default function Home() {
           <div className="space-y-8">
             <div className="space-y-4">
               <h2 className="text-3xl sm:text-4xl font-bold text-balance">
-                自然言語で旅行を計画
+                1行入力で理想のホテルが見つかる
               </h2>
               <p className="text-lg text-muted-foreground max-w-2xl">
-                条件や想いをそのまま入力すれば、AIが理想のホテルを見つけ出します。従来の細かい検索フィルターは必要ありません。
+                思考をそのまま入力。AIが意図を理解して、最適な宿泊施設を即座に提案します。会話を重ねる必要はありません。
               </p>
             </div>
 
@@ -138,20 +140,20 @@ export default function Home() {
               <SearchInput onSearch={handleSearch} isLoading={isLoading} />
             </div>
 
-            {/* Example queries */}
+            {/* Example queries - emphasizing one-shot semantic input */}
             <div className="space-y-3">
-              <p className="text-sm font-medium text-muted-foreground">例：</p>
+              <p className="text-xs uppercase font-bold text-muted-foreground">試してみる</p>
               <div className="flex flex-wrap gap-2">
                 {[
-                  '三島駅近く、朝食付き',
-                  'ダブルベッド、WiFi完備',
-                  '静かな環境、スパ付き',
-                  '格安で駅前',
+                  '三島駅 5km以内 朝食付き ダブルベッド',
+                  '駅前の格安ホテル WiFi完備',
+                  '温泉スパ完備 贅沢な環境',
+                  '今週末 お手頃価格 3つ星以上',
                 ].map((example) => (
                   <button
                     key={example}
                     onClick={() => handleSearch(example)}
-                    className="text-sm px-3 py-1.5 rounded-full border border-border bg-background hover:bg-secondary transition-colors text-foreground"
+                    className="text-xs px-3 py-2 rounded-lg border border-primary/30 bg-primary/5 hover:bg-primary/10 hover:border-primary/50 transition-all text-foreground font-medium"
                   >
                     {example}
                   </button>
@@ -166,16 +168,31 @@ export default function Home() {
       {hasSearched && (
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
           {searchQuery && (
-            <div className="mb-8 space-y-2">
-              <p className="text-sm text-muted-foreground">検索クエリ</p>
-              <p className="text-xl font-semibold text-balance">
-                {searchQuery}
-              </p>
-              {!isLoading && results.length > 0 && (
-                <p className="text-sm text-muted-foreground">
-                  {results.length}件の検索結果
+            <div className="mb-6 space-y-4">
+              <div>
+                <p className="text-xs uppercase font-bold text-muted-foreground mb-2">検索クエリ</p>
+                <p className="text-2xl font-bold text-balance">
+                  {searchQuery}
                 </p>
-              )}
+              </div>
+            </div>
+          )}
+
+          {/* Criteria Parser - shows AI's semantic understanding */}
+          {searchQuery && <CriteriaParser query={searchQuery} />}
+
+          {/* Essential questions if needed */}
+          {searchQuery && !searchQuery.toLowerCase().includes('日') && (
+            <EssentialQuestions onAnswered={(answer) => {
+              setSearchQuery(searchQuery + ' ' + answer)
+            }} />
+          )}
+
+          {!isLoading && results.length > 0 && (
+            <div className="mb-4">
+              <p className="text-sm font-medium text-muted-foreground">
+                {results.length}件のおすすめ宿泊施設
+              </p>
             </div>
           )}
 
@@ -183,33 +200,39 @@ export default function Home() {
         </section>
       )}
 
-      {/* Features Section */}
+      {/* Features Section - Kaizen principles */}
       {!hasSearched && (
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {[
-              {
-                title: 'セマンティック検索',
-                description: '自然な言葉で検索。AIが意図を理解して最適な結果を表示します。',
-                icon: '🧠',
-              },
-              {
-                title: '瞬間的な結果',
-                description: '複雑な条件を一度に指定。AIが全てを分析して理想のホテルを提案。',
-                icon: '⚡',
-              },
-              {
-                title: '信頼できる情報',
-                description: '楽天トラベルの実際のホテル情報。評価や口コミも確認できます。',
-                icon: '⭐',
-              },
-            ].map((feature) => (
-              <div key={feature.title} className="space-y-3">
-                <div className="text-4xl">{feature.icon}</div>
-                <h3 className="font-semibold text-lg">{feature.title}</h3>
-                <p className="text-muted-foreground">{feature.description}</p>
-              </div>
-            ))}
+          <div className="space-y-12">
+            <div className="space-y-4">
+              <h3 className="text-2xl font-bold">Kaizen改善で実現する高速検索</h3>
+              <p className="text-muted-foreground max-w-2xl">従来の会話型AIの冗長なやり取りを排除。思考をそのまま入力できるUIで、検索から予約までの時間を大幅短縮します。</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {[
+                {
+                  title: '1行で条件指定',
+                  description: 'セマンティック検索により、細かいフィルター設定不要。自然な文章で全条件を一度に伝えられます。',
+                  icon: '📝',
+                },
+                {
+                  title: '即座に結果表示',
+                  description: '複数ターンの会話なし。入力直後にAIが意図を理解し、最適なホテルを瞬時に提案します。',
+                  icon: '⚡',
+                },
+                {
+                  title: '最小限の質問',
+                  description: '不足情報は必要な時だけ。選択式の簡潔な質問で、認知負荷を最小化します。',
+                  icon: '❓',
+                },
+              ].map((feature) => (
+                <div key={feature.title} className="space-y-3 p-4 rounded-lg border border-border bg-secondary/30">
+                  <div className="text-4xl">{feature.icon}</div>
+                  <h4 className="font-semibold text-lg">{feature.title}</h4>
+                  <p className="text-muted-foreground text-sm">{feature.description}</p>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
       )}
