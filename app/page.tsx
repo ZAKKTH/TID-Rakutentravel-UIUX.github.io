@@ -211,7 +211,7 @@ export default function Home() {
                   ))}
                 </div>
                 <p className="text-xs text-muted-foreground pt-1">
-                  下のボタンからタグで条件を組み合わせることもできます
+                  左下の ^ ボタンからタグで細かい条件を組み合わせることもできます
                 </p>
               </div>
             </div>
