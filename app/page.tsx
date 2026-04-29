@@ -306,26 +306,4 @@ export default function Home() {
       </div>
     </div>
   )
-  const [showHint, setShowHint] = useState(true)
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowHint(false)
-    }, 4000) // 4秒表示
-
-    return () => clearTimeout(timer)
-  }, [])
-  {
-    showHint && (
-      <div className="fixed bottom-20 left-4 z-50 animate-in fade-in slide-in-from-bottom-2">
-        <div className="bg-card border border-border shadow-md rounded-lg px-3 py-2 text-xs text-muted-foreground relative">
-
-          細かい条件はこちらから 👈
-
-          {/* 三角形 */}
-          <div className="absolute -bottom-1 left-3 w-3 h-3 bg-card border-b border-r border-border rotate-45" />
-
-        </div>
-      </div>
-    )
-  }
 }
