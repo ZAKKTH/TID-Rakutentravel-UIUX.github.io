@@ -11,7 +11,10 @@ interface ChatInputProps {
   placeholder?: string
 }
 
-
+interface TagGroup {
+  label: string
+  tags: { label: string; value: string }[]
+}
 
 const TAG_GROUPS: TagGroup[] = [
   {
