@@ -1,10 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { SearchInput } from '@/components/search-input'
-import { HotelGrid } from '@/components/hotel-grid'
-import { CriteriaParser } from '@/components/criteria-parser'
-import { EssentialQuestions } from '@/components/essential-questions'
+import { useState, useRef, useEffect } from 'react'
+import { Sparkles } from 'lucide-react'
+import { ChatMessage } from '@/components/chat-message'
+import { ChatInput } from '@/components/chat-input'
+import { AIQuestion } from '@/components/ai-question'
+import { HotelResultCards } from '@/components/hotel-result-cards'
+import { ParsedCriteriaDisplay, parseCriteria } from '@/components/parsed-criteria-display'
 
 interface Hotel {
   id: string
@@ -18,238 +20,287 @@ interface Hotel {
   description: string
 }
 
-const mockHotels: Record<string, Hotel[]> = {
-  default: [
-    {
-      id: '1',
-      name: 'プレミアムシティホテル三島',
-      distance: 2.5,
-      rating: 4.6,
-      reviews: 248,
-      price: 8500,
-      image: '🏨',
-      amenities: ['WiFi', 'Breakfast', 'AC'],
-      description: '三島駅から徒歩5分。モダンな客室設備とビジネス向け設施が充実。朝食は日本料理とフレンチが選べます。',
-    },
-    {
-      id: '2',
-      name: 'シティホテルミシマ',
-      distance: 3.8,
-      rating: 4.2,
-      reviews: 156,
-      price: 6200,
-      image: '🏨',
-      amenities: ['WiFi', 'Breakfast'],
-      description: 'アクセスが良く、リーズナブルな価格が魅力。シングルからダブルまで様々なお部屋タイプがあります。',
-    },
-    {
-      id: '3',
-      name: 'グランドホテル静岡',
-      distance: 4.2,
-      rating: 4.4,
-      reviews: 312,
-      price: 9800,
-      image: '🏨',
-      amenities: ['WiFi', 'Breakfast', 'AC'],
-      description: '高級感あふれるホテル。温泉大浴場完備で、ビジネスと観光どちらにも対応しています。',
-    },
-    {
-      id: '4',
-      name: 'ビジネスホテル駅前',
-      distance: 0.3,
-      rating: 3.9,
-      reviews: 89,
-      price: 4800,
-      image: '🏨',
-      amenities: ['WiFi'],
-      description: '三島駅から最も近いホテル。シンプルで清潔な客室が特徴。低価格で駅前ロケーション。',
-    },
-    {
-      id: '5',
-      name: 'リゾートスパ三島',
-      distance: 4.5,
-      rating: 4.7,
-      reviews: 421,
-      price: 12500,
-      image: '🏨',
-      amenities: ['WiFi', 'Breakfast', 'AC'],
-      description: 'スパ施設完備の高級ホテル。自然に囲まれた環境で、ゆったり時間が過ごせます。',
-    },
-    {
-      id: '6',
-      name: 'コンフォートインミシマ',
-      distance: 2.0,
-      rating: 4.3,
-      reviews: 203,
-      price: 7200,
-      image: '🏨',
-      amenities: ['WiFi', 'Breakfast'],
-      description: '清潔で快適な客室が評判。スタッフの対応も丁寧で、リピーター率が高いホテルです。',
-    },
-  ],
-}
+type MessageType = 
+  | { type: 'user'; content: string }
+  | { type: 'ai-thinking' }
+  | { type: 'ai-criteria'; query: string }
+  | { type: 'ai-question'; questionType: 'date' | 'guests' | 'budget' }
+  | { type: 'ai-results'; hotels: Hotel[] }
+  | { type: 'ai-text'; content: string }
+
+const mockHotels: Hotel[] = [
+  {
+    id: '1',
+    name: 'プレミアムシティホテル三島',
+    distance: 2.5,
+    rating: 4.6,
+    reviews: 248,
+    price: 8500,
+    image: '🏨',
+    amenities: ['WiFi', 'Breakfast', 'AC'],
+    description: '三島駅から徒歩5分。モダンな客室設備とビジネス向け設施が充実。',
+  },
+  {
+    id: '2',
+    name: 'シティホテルミシマ',
+    distance: 3.8,
+    rating: 4.2,
+    reviews: 156,
+    price: 6200,
+    image: '🏨',
+    amenities: ['WiFi', 'Breakfast'],
+    description: 'アクセスが良く、リーズナブルな価格が魅力。',
+  },
+  {
+    id: '3',
+    name: 'グランドホテル静岡',
+    distance: 4.2,
+    rating: 4.4,
+    reviews: 312,
+    price: 9800,
+    image: '🏨',
+    amenities: ['WiFi', 'Breakfast', 'AC'],
+    description: '高級感あふれるホテル。温泉大浴場完備。',
+  },
+  {
+    id: '4',
+    name: 'ビジネスホテル駅前',
+    distance: 0.3,
+    rating: 3.9,
+    reviews: 89,
+    price: 4800,
+    image: '🏨',
+    amenities: ['WiFi'],
+    description: '三島駅から最も近いホテル。低価格で駅前ロケーション。',
+  },
+  {
+    id: '5',
+    name: 'リゾートスパ三島',
+    distance: 4.5,
+    rating: 4.7,
+    reviews: 421,
+    price: 12500,
+    image: '🏨',
+    amenities: ['WiFi', 'Breakfast', 'AC'],
+    description: 'スパ施設完備の高級ホテル。',
+  },
+]
+
+const exampleQueries = [
+  '三島駅 5km以内 朝食付き',
+  '駅前の格安ホテル WiFi完備',
+  '温泉スパ完備 贅沢な環境',
+]
 
 export default function Home() {
-  const [searchQuery, setSearchQuery] = useState('')
-  const [results, setResults] = useState<Hotel[]>([])
+  const [messages, setMessages] = useState<MessageType[]>([])
   const [isLoading, setIsLoading] = useState(false)
-  const [hasSearched, setHasSearched] = useState(false)
+  const [currentQuery, setCurrentQuery] = useState('')
+  const [needsDate, setNeedsDate] = useState(false)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  const handleSearch = async (query: string) => {
-    setSearchQuery(query)
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }
+
+  useEffect(() => {
+    scrollToBottom()
+  }, [messages])
+
+  const handleSend = async (message: string) => {
+    setCurrentQuery(message)
     setIsLoading(true)
-    setHasSearched(true)
 
-    // Simulate API call with 800ms delay
-    await new Promise(resolve => setTimeout(resolve, 800))
+    // Add user message
+    setMessages(prev => [...prev, { type: 'user', content: message }])
 
-    // Return all mock hotels (in a real app, this would filter based on the query)
-    setResults(mockHotels.default)
+    // Show thinking state
+    await new Promise(r => setTimeout(r, 300))
+    setMessages(prev => [...prev, { type: 'ai-thinking' }])
+
+    // Parse and show criteria
+    await new Promise(r => setTimeout(r, 800))
+    setMessages(prev => prev.filter(m => m.type !== 'ai-thinking'))
+    setMessages(prev => [...prev, { type: 'ai-criteria', query: message }])
+
+    // Check if date is missing
+    const hasDate = message.includes('今日') || message.includes('今週') || message.includes('来週') || /\d{4}/.test(message)
+    
+    if (!hasDate) {
+      await new Promise(r => setTimeout(r, 500))
+      setNeedsDate(true)
+      setMessages(prev => [...prev, { type: 'ai-question', questionType: 'date' }])
+      setIsLoading(false)
+      return
+    }
+
+    // Show results
+    await new Promise(r => setTimeout(r, 600))
+    setMessages(prev => [...prev, { type: 'ai-results', hotels: mockHotels }])
     setIsLoading(false)
   }
 
+  const handleQuestionAnswer = async (answer: string) => {
+    setNeedsDate(false)
+    
+    // Add user answer as message
+    setMessages(prev => [...prev, { type: 'user', content: answer }])
+
+    // Show thinking
+    setIsLoading(true)
+    await new Promise(r => setTimeout(r, 500))
+
+    // Show results
+    setMessages(prev => [...prev, { type: 'ai-results', hotels: mockHotels }])
+    setIsLoading(false)
+  }
+
+  const handleExampleClick = (example: string) => {
+    handleSend(example)
+  }
+
   return (
-    <main className="min-h-screen bg-background">
+    <div className="flex flex-col h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center">
+        <div className="max-w-3xl mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-2xl">✈️</span>
-            <div>
-              <h1 className="font-bold text-lg">Rakuten Travel AI</h1>
-              <p className="text-xs text-muted-foreground">セマンティック検索で理想のホテルを探す</p>
+            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+              <Sparkles className="w-4 h-4 text-primary-foreground" />
             </div>
+            <div>
+              <h1 className="font-bold text-sm">Rakuten Travel AI</h1>
+              <p className="text-[10px] text-muted-foreground">セマンティック検索</p>
+            </div>
+          </div>
+          <div className="text-xs text-muted-foreground">
+            Kaizen UX
           </div>
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section className="border-b border-border bg-secondary/30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
-          <div className="space-y-8">
-            <div className="space-y-4">
-              <h2 className="text-3xl sm:text-4xl font-bold text-balance">
-                1行入力で理想のホテルが見つかる
-              </h2>
-              <p className="text-lg text-muted-foreground max-w-2xl">
-                思考をそのまま入力。AIが意図を理解して、最適な宿泊施設を即座に提案します。会話を重ねる必要はありません。
-              </p>
-            </div>
-
-            <div className="max-w-2xl">
-              <SearchInput onSearch={handleSearch} isLoading={isLoading} />
-            </div>
-
-            {/* Example queries - emphasizing one-shot semantic input */}
-            <div className="space-y-3">
-              <p className="text-xs uppercase font-bold text-muted-foreground">試してみる</p>
-              <div className="flex flex-wrap gap-2">
-                {[
-                  '三島駅 5km以内 朝食付き ダブルベッド',
-                  '駅前の格安ホテル WiFi完備',
-                  '温泉スパ完備 贅沢な環境',
-                  '今週末 お手頃価格 3つ星以上',
-                ].map((example) => (
-                  <button
-                    key={example}
-                    onClick={() => handleSearch(example)}
-                    className="text-xs px-3 py-2 rounded-lg border border-primary/30 bg-primary/5 hover:bg-primary/10 hover:border-primary/50 transition-all text-foreground font-medium"
-                  >
-                    {example}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Results Section */}
-      {hasSearched && (
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
-          {searchQuery && (
-            <div className="mb-6 space-y-4">
-              <div>
-                <p className="text-xs uppercase font-bold text-muted-foreground mb-2">検索クエリ</p>
-                <p className="text-2xl font-bold text-balance">
-                  {searchQuery}
+      {/* Chat Area */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-3xl mx-auto px-4 py-6">
+          {messages.length === 0 ? (
+            // Welcome State
+            <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-8">
+              <div className="space-y-4">
+                <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto">
+                  <Sparkles className="w-8 h-8 text-primary" />
+                </div>
+                <h2 className="text-2xl font-bold text-balance">
+                  理想のホテルを1行で検索
+                </h2>
+                <p className="text-muted-foreground max-w-md text-sm">
+                  自然な言葉で条件を入力してください。AIが意図を理解し、最適な宿泊施設を提案します。
                 </p>
               </div>
-            </div>
-          )}
 
-          {/* Criteria Parser - shows AI's semantic understanding */}
-          {searchQuery && <CriteriaParser query={searchQuery} />}
-
-          {/* Essential questions if needed */}
-          {searchQuery && !searchQuery.toLowerCase().includes('日') && (
-            <EssentialQuestions onAnswered={(answer) => {
-              setSearchQuery(searchQuery + ' ' + answer)
-            }} />
-          )}
-
-          {!isLoading && results.length > 0 && (
-            <div className="mb-4">
-              <p className="text-sm font-medium text-muted-foreground">
-                {results.length}件のおすすめ宿泊施設
-              </p>
-            </div>
-          )}
-
-          <HotelGrid hotels={results} isLoading={isLoading} />
-        </section>
-      )}
-
-      {/* Features Section - Kaizen principles */}
-      {!hasSearched && (
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
-          <div className="space-y-12">
-            <div className="space-y-4">
-              <h3 className="text-2xl font-bold">Kaizen改善で実現する高速検索</h3>
-              <p className="text-muted-foreground max-w-2xl">従来の会話型AIの冗長なやり取りを排除。思考をそのまま入力できるUIで、検索から予約までの時間を大幅短縮します。</p>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {[
-                {
-                  title: '1行で条件指定',
-                  description: 'セマンティック検索により、細かいフィルター設定不要。自然な文章で全条件を一度に伝えられます。',
-                  icon: '📝',
-                },
-                {
-                  title: '即座に結果表示',
-                  description: '複数ターンの会話なし。入力直後にAIが意図を理解し、最適なホテルを瞬時に提案します。',
-                  icon: '⚡',
-                },
-                {
-                  title: '最小限の質問',
-                  description: '不足情報は必要な時だけ。選択式の簡潔な質問で、認知負荷を最小化します。',
-                  icon: '❓',
-                },
-              ].map((feature) => (
-                <div key={feature.title} className="space-y-3 p-4 rounded-lg border border-border bg-secondary/30">
-                  <div className="text-4xl">{feature.icon}</div>
-                  <h4 className="font-semibold text-lg">{feature.title}</h4>
-                  <p className="text-muted-foreground text-sm">{feature.description}</p>
+              <div className="space-y-3 w-full max-w-md">
+                <p className="text-xs font-medium text-muted-foreground">例えば...</p>
+                <div className="flex flex-col gap-2">
+                  {exampleQueries.map((example) => (
+                    <button
+                      key={example}
+                      onClick={() => handleExampleClick(example)}
+                      className="w-full text-left px-4 py-3 rounded-xl border border-border bg-secondary/30 hover:bg-secondary/60 hover:border-primary/30 transition-all text-sm"
+                    >
+                      {example}
+                    </button>
+                  ))}
                 </div>
-              ))}
+              </div>
             </div>
-          </div>
-        </section>
-      )}
-
-      {/* Footer */}
-      <footer className="border-t border-border bg-secondary/30 py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
-            <p>© 2024 Rakuten Travel AI. All rights reserved.</p>
-            <div className="flex gap-6">
-              <a href="#" className="hover:text-foreground transition-colors">プライバシー</a>
-              <a href="#" className="hover:text-foreground transition-colors">利用規約</a>
-              <a href="#" className="hover:text-foreground transition-colors">お問い合わせ</a>
+          ) : (
+            // Chat Messages
+            <div className="space-y-4">
+              {messages.map((message, index) => {
+                switch (message.type) {
+                  case 'user':
+                    return (
+                      <ChatMessage key={index} type="user">
+                        <p className="text-sm">{message.content}</p>
+                      </ChatMessage>
+                    )
+                  
+                  case 'ai-thinking':
+                    return (
+                      <ChatMessage key={index} type="ai">
+                        <div className="flex items-center gap-2">
+                          <div className="flex gap-1">
+                            <span className="w-2 h-2 rounded-full bg-muted-foreground/40 animate-pulse" />
+                            <span className="w-2 h-2 rounded-full bg-muted-foreground/40 animate-pulse delay-75" />
+                            <span className="w-2 h-2 rounded-full bg-muted-foreground/40 animate-pulse delay-150" />
+                          </div>
+                          <span className="text-xs text-muted-foreground">検索条件を分析中...</span>
+                        </div>
+                      </ChatMessage>
+                    )
+                  
+                  case 'ai-criteria':
+                    const criteria = parseCriteria(message.query)
+                    return (
+                      <ChatMessage key={index} type="ai">
+                        <div className="space-y-3">
+                          <p className="text-sm">ご希望の条件を理解しました。</p>
+                          <ParsedCriteriaDisplay criteria={criteria} />
+                        </div>
+                      </ChatMessage>
+                    )
+                  
+                  case 'ai-question':
+                    return (
+                      <ChatMessage key={index} type="ai">
+                        {message.questionType === 'date' && (
+                          <AIQuestion
+                            question="宿泊日はいつ頃をご希望ですか?"
+                            options={[
+                              { label: '今日', value: '今日' },
+                              { label: '今週末', value: '今週末' },
+                              { label: '来週', value: '来週' },
+                            ]}
+                            onSelect={handleQuestionAnswer}
+                            showDatePicker
+                          />
+                        )}
+                      </ChatMessage>
+                    )
+                  
+                  case 'ai-results':
+                    return (
+                      <ChatMessage key={index} type="ai">
+                        <HotelResultCards hotels={message.hotels} />
+                      </ChatMessage>
+                    )
+                  
+                  case 'ai-text':
+                    return (
+                      <ChatMessage key={index} type="ai">
+                        <p className="text-sm">{message.content}</p>
+                      </ChatMessage>
+                    )
+                  
+                  default:
+                    return null
+                }
+              })}
+              <div ref={messagesEndRef} />
             </div>
-          </div>
+          )}
         </div>
-      </footer>
-    </main>
+      </div>
+
+      {/* Input Area */}
+      <div className="sticky bottom-0 bg-gradient-to-t from-background via-background to-transparent pt-4">
+        <div className="max-w-3xl mx-auto">
+          <ChatInput
+            onSend={handleSend}
+            isLoading={isLoading}
+            placeholder="例: 三島駅 5km以内 朝食付き ダブルベッド"
+          />
+        </div>
+      </div>
+    </div>
   )
 }

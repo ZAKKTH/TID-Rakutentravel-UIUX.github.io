@@ -1,5 +1,11 @@
 @import 'tailwindcss';
 
+@theme {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-border: var(--border);
+}
+
 @layer base {
   :root {
     --background: #ffffff;
@@ -39,7 +45,8 @@ html {
 }
 
 * {
-  @apply border-border;
+  border-color: var(--border);
+  /* ← こっち推奨 */
 }
 
 body {
