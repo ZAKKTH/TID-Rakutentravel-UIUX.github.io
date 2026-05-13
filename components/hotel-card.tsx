@@ -34,13 +34,13 @@ export function HotelCard({ hotel }: HotelCardProps) {
           {hotel.image}
         </div>
       </div>
-      
+
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
             <h3 className="font-semibold text-lg text-balance">{hotel.name}</h3>
             <div className="flex items-center gap-1 mt-1 text-muted-foreground text-sm">
-              <MapPin className="w-4 h-4 flex-shrink-0" />
+              <MapPin className="w-4 h-4 shrink-0" />
               <span>{hotel.distance}km</span>
             </div>
           </div>
@@ -56,7 +56,7 @@ export function HotelCard({ hotel }: HotelCardProps) {
 
       <CardContent className="space-y-4">
         <p className="text-sm text-muted-foreground line-clamp-2">{hotel.description}</p>
-        
+
         <div className="flex flex-wrap gap-2">
           {hotel.amenities.map((amenity) => (
             <div
