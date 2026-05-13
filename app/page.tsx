@@ -95,8 +95,8 @@ const exampleQueries = [
 export default function Home() {
   const [messages, setMessages] = useState<MessageType[]>([])
   const [isLoading, setIsLoading] = useState(false)
-  const [currentQuery, setCurrentQuery] = useState('')
-  const [needsDate, setNeedsDate] = useState(false)
+  const [, setCurrentQuery] = useState('')
+  const [, setNeedsDate] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const scrollToBottom = () => {
