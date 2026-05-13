@@ -30,7 +30,7 @@ export function HotelCard({ hotel }: HotelCardProps) {
   return (
     <Card className="overflow-hidden hover:shadow-lg transition-shadow">
       <div className="relative h-48 bg-secondary overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-muted to-muted-foreground/20 flex items-center justify-center text-muted-foreground text-sm">
+        <div className="absolute inset-0 bg-linear-to-br from-muted to-muted-foreground/20 flex items-center justify-center text-muted-foreground text-sm">
           {hotel.image}
         </div>
       </div>
