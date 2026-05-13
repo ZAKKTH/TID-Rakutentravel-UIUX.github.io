@@ -95,8 +95,8 @@ const exampleQueries = [
 export default function Home() {
   const [messages, setMessages] = useState<MessageType[]>([])
   const [isLoading, setIsLoading] = useState(false)
-  const [currentQuery, setCurrentQuery] = useState('')
-  const [needsDate, setNeedsDate] = useState(false)
+  const [, setCurrentQuery] = useState('')
+  const [, setNeedsDate] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const scrollToBottom = () => {
@@ -162,7 +162,7 @@ export default function Home() {
   return (
     <div className="flex flex-col h-screen bg-background">
       {/* Header */}
-      <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
         <div className="max-w-3xl mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
@@ -295,7 +295,7 @@ export default function Home() {
       </div>
 
       {/* Input Area */}
-      <div className="sticky bottom-0 bg-gradient-to-t from-background via-background to-transparent pt-4">
+      <div className="sticky bottom-0 bg-linear-to-t from-background via-background to-transparent pt-4">
         <div className="max-w-3xl mx-auto">
           <ChatInput
             onSend={handleSend}

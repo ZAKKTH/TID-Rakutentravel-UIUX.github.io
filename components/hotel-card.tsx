@@ -30,21 +30,21 @@ export function HotelCard({ hotel }: HotelCardProps) {
   return (
     <Card className="overflow-hidden hover:shadow-lg transition-shadow">
       <div className="relative h-48 bg-secondary overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-muted to-muted-foreground/20 flex items-center justify-center text-muted-foreground text-sm">
+        <div className="absolute inset-0 bg-linear-to-br from-muted to-muted-foreground/20 flex items-center justify-center text-muted-foreground text-sm">
           {hotel.image}
         </div>
       </div>
-      
+
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
             <h3 className="font-semibold text-lg text-balance">{hotel.name}</h3>
             <div className="flex items-center gap-1 mt-1 text-muted-foreground text-sm">
-              <MapPin className="w-4 h-4 flex-shrink-0" />
+              <MapPin className="w-4 h-4 shrink-0" />
               <span>{hotel.distance}km</span>
             </div>
           </div>
-          <div className="text-right flex-shrink-0">
+          <div className="text-right shrink-0">
             <div className="flex items-center gap-1 justify-end">
               <Star className="w-4 h-4 fill-primary text-primary" />
               <span className="font-semibold text-sm">{hotel.rating}</span>
@@ -56,7 +56,7 @@ export function HotelCard({ hotel }: HotelCardProps) {
 
       <CardContent className="space-y-4">
         <p className="text-sm text-muted-foreground line-clamp-2">{hotel.description}</p>
-        
+
         <div className="flex flex-wrap gap-2">
           {hotel.amenities.map((amenity) => (
             <div

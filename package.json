@@ -3,6 +3,7 @@
 	"version": "1.0.0",
 	"description": "AI-powered semantic hotel search for Rakuten Travel",
 	"private": true,
+	"type": "module",
 	"scripts": {
 		"dev": "next dev",
 		"build": "next build",
