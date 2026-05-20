@@ -5,84 +5,110 @@ import { Sparkles } from 'lucide-react'
 import { ChatMessage } from '@/components/chat-message'
 import { ChatInput } from '@/components/chat-input'
 import { AIQuestion } from '@/components/ai-question'
-import { HotelResultCards } from '@/components/hotel-result-cards'
+import { HotelComparisonTable, type HotelData } from '@/components/hotel-comparison-table'
 import { ParsedCriteriaDisplay, parseCriteria } from '@/components/parsed-criteria-display'
-
-interface Hotel {
-  id: string
-  name: string
-  distance: number
-  rating: number
-  reviews: number
-  price: number
-  image: string
-  amenities: string[]
-  description: string
-}
 
 type MessageType =
   | { type: 'user'; content: string }
   | { type: 'ai-thinking' }
   | { type: 'ai-criteria'; query: string }
   | { type: 'ai-question'; questionType: 'date' | 'guests' | 'budget' }
-  | { type: 'ai-results'; hotels: Hotel[] }
+  | { type: 'ai-results'; hotels: HotelData[]; query: string }
   | { type: 'ai-text'; content: string }
 
-const mockHotels: Hotel[] = [
+const mockHotels: HotelData[] = [
   {
     id: '1',
     name: 'プレミアムシティホテル三島',
-    distance: 2.5,
+    price: 8500,
     rating: 4.6,
     reviews: 248,
-    price: 8500,
+    distance: 2.5,
     image: '🏨',
-    amenities: ['WiFi', 'Breakfast', 'AC'],
-    description: '三島駅から徒歩5分。モダンな客室設備とビジネス向け設施が充実。',
+    hasBreakfast: true,
+    hasWifi: true,
+    hasHotSpring: false,
+    hasSpa: false,
+    hasParking: true,
+    noiseScore: 7,
+    cleanScore: 9,
+    serviceScore: 8,
+    matchScore: 88,
   },
   {
     id: '2',
     name: 'シティホテルミシマ',
-    distance: 3.8,
+    price: 6200,
     rating: 4.2,
     reviews: 156,
-    price: 6200,
-    image: '🏨',
-    amenities: ['WiFi', 'Breakfast'],
-    description: 'アクセスが良く、リーズナブルな価格が魅力。',
+    distance: 3.8,
+    image: '🏩',
+    hasBreakfast: true,
+    hasWifi: true,
+    hasHotSpring: false,
+    hasSpa: false,
+    hasParking: false,
+    noiseScore: 6,
+    cleanScore: 7,
+    serviceScore: 7,
+    matchScore: 70,
+    badge: '格安',
   },
   {
     id: '3',
     name: 'グランドホテル静岡',
-    distance: 4.2,
+    price: 9800,
     rating: 4.4,
     reviews: 312,
-    price: 9800,
-    image: '🏨',
-    amenities: ['WiFi', 'Breakfast', 'AC'],
-    description: '高級感あふれるホテル。温泉大浴場完備。',
+    distance: 4.2,
+    image: '🏰',
+    hasBreakfast: true,
+    hasWifi: true,
+    hasHotSpring: true,
+    hasSpa: false,
+    hasParking: true,
+    noiseScore: 8,
+    cleanScore: 9,
+    serviceScore: 9,
+    matchScore: 82,
   },
   {
     id: '4',
     name: 'ビジネスホテル駅前',
-    distance: 0.3,
+    price: 4800,
     rating: 3.9,
     reviews: 89,
-    price: 4800,
-    image: '🏨',
-    amenities: ['WiFi'],
-    description: '三島駅から最も近いホテル。低価格で駅前ロケーション。',
+    distance: 0.3,
+    image: '🏢',
+    hasBreakfast: false,
+    hasWifi: true,
+    hasHotSpring: false,
+    hasSpa: false,
+    hasParking: false,
+    noiseScore: 5,
+    cleanScore: 7,
+    serviceScore: 6,
+    matchScore: 65,
+    badge: '最寄',
   },
   {
     id: '5',
     name: 'リゾートスパ三島',
-    distance: 4.5,
-    rating: 4.7,
-    reviews: 421,
     price: 12500,
-    image: '🏨',
-    amenities: ['WiFi', 'Breakfast', 'AC'],
-    description: 'スパ施設完備の高級ホテル。',
+    rating: 4.8,
+    reviews: 421,
+    distance: 4.5,
+    image: '🌿',
+    hasBreakfast: true,
+    hasWifi: true,
+    hasHotSpring: true,
+    hasSpa: true,
+    hasParking: true,
+    noiseScore: 10,
+    cleanScore: 10,
+    serviceScore: 10,
+    matchScore: 96,
+    badge: '人気No.1',
   },
 ]
 
@@ -136,7 +162,7 @@ export default function Home() {
 
     // Show results
     await new Promise(r => setTimeout(r, 600))
-    setMessages(prev => [...prev, { type: 'ai-results', hotels: mockHotels }])
+    setMessages(prev => [...prev, { type: 'ai-results', hotels: mockHotels, query: message }])
     setIsLoading(false)
   }
 
@@ -150,8 +176,9 @@ export default function Home() {
     setIsLoading(true)
     await new Promise(r => setTimeout(r, 500))
 
-    // Show results
-    setMessages(prev => [...prev, { type: 'ai-results', hotels: mockHotels }])
+    // Show results — retrieve the last search query from messages
+    const lastQuery = messages.findLast(m => m.type === 'user')?.content ?? ''
+    setMessages(prev => [...prev, { type: 'ai-results', hotels: mockHotels, query: lastQuery + ' ' + answer }])
     setIsLoading(false)
   }
 
@@ -273,7 +300,7 @@ export default function Home() {
                   case 'ai-results':
                     return (
                       <ChatMessage key={index} type="ai">
-                        <HotelResultCards hotels={message.hotels} />
+                        <HotelComparisonTable hotels={message.hotels} query={message.query} />
                       </ChatMessage>
                     )
 
