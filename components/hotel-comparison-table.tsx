@@ -37,7 +37,7 @@ interface Dimension {
   label: string
   icon: React.ReactNode
   format: (hotel: HotelData) => React.ReactNode
-  highlight: 'lowest' | 'highest' | 'boolean' | 'none'
+  highlight: 'lowest' | 'highest' | 'boolean'
   highlightColor: string
 }
 
