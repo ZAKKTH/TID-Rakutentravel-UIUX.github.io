@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useCallback } from 'react'
+import { useRef, useState, useEffect, useCallback } from 'react'
 import { X, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -12,20 +12,20 @@ export interface SemanticTag {
 }
 
 const TAG_DEFINITIONS: SemanticTag[] = [
-  { id: 'hotspring', label: '温泉', value: '温泉', color: 'bg-orange-100 text-orange-700 border-orange-200' },
-  { id: 'budget', label: '格安', value: '格安', color: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
-  { id: 'station', label: '駅近', value: '駅近', color: 'bg-blue-100 text-blue-700 border-blue-200' },
-  { id: 'quiet', label: '静か', value: '静か', color: 'bg-slate-100 text-slate-700 border-slate-200' },
-  { id: 'breakfast', label: '朝食付き', value: '朝食付き', color: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
-  { id: 'wifi', label: 'WiFi無料', value: 'WiFi無料', color: 'bg-sky-100 text-sky-700 border-sky-200' },
-  { id: 'ocean', label: '海が見える', value: '海が見える', color: 'bg-cyan-100 text-cyan-700 border-cyan-200' },
-  { id: 'nature', label: '自然豊か', value: '自然豊か', color: 'bg-green-100 text-green-700 border-green-200' },
-  { id: 'luxury', label: '贅沢', value: '贅沢', color: 'bg-violet-100 text-violet-700 border-violet-200' },
-  { id: 'relaxation', label: 'リラックス', value: 'リラックス', color: 'bg-pink-100 text-pink-700 border-pink-200' },
-  { id: 'business', label: 'ビジネス向け', value: 'ビジネス向け', color: 'bg-gray-100 text-gray-700 border-gray-200' },
-  { id: 'parking', label: '駐車場あり', value: '駐車場あり', color: 'bg-stone-100 text-stone-700 border-stone-200' },
-  { id: 'spa', label: 'スパ', value: 'スパ', color: 'bg-rose-100 text-rose-700 border-rose-200' },
-  { id: '5km', label: '5km以内', value: '5km以内', color: 'bg-indigo-100 text-indigo-700 border-indigo-200' },
+  { id: 'hotspring',  label: '温泉',        value: '温泉',        color: 'bg-orange-100 text-orange-700 border-orange-200' },
+  { id: 'budget',     label: '格安',        value: '格安',        color: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
+  { id: 'station',    label: '駅近',        value: '駅近',        color: 'bg-blue-100 text-blue-700 border-blue-200' },
+  { id: 'quiet',      label: '静か',        value: '静か',        color: 'bg-slate-100 text-slate-700 border-slate-200' },
+  { id: 'breakfast',  label: '朝食付き',    value: '朝食付き',    color: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
+  { id: 'wifi',       label: 'WiFi無料',    value: 'WiFi無料',    color: 'bg-sky-100 text-sky-700 border-sky-200' },
+  { id: 'ocean',      label: '海が見える',  value: '海が見える',  color: 'bg-cyan-100 text-cyan-700 border-cyan-200' },
+  { id: 'nature',     label: '自然豊か',    value: '自然豊か',    color: 'bg-green-100 text-green-700 border-green-200' },
+  { id: 'luxury',     label: '贅沢',        value: '贅沢',        color: 'bg-violet-100 text-violet-700 border-violet-200' },
+  { id: 'relaxation', label: 'リラックス',  value: 'リラックス',  color: 'bg-pink-100 text-pink-700 border-pink-200' },
+  { id: 'business',   label: 'ビジネス向け', value: 'ビジネス向け', color: 'bg-gray-100 text-gray-700 border-gray-200' },
+  { id: 'parking',    label: '駐車場あり',  value: '駐車場あり',  color: 'bg-stone-100 text-stone-700 border-stone-200' },
+  { id: 'spa',        label: 'スパ',        value: 'スパ',        color: 'bg-rose-100 text-rose-700 border-rose-200' },
+  { id: '5km',        label: '5km以内',     value: '5km以内',     color: 'bg-indigo-100 text-indigo-700 border-indigo-200' },
 ]
 
 export { TAG_DEFINITIONS }
