@@ -37,7 +37,7 @@ interface Dimension {
   label: string
   icon: React.ReactNode
   format: (hotel: HotelData) => React.ReactNode
-  highlight: 'lowest' | 'highest' | 'boolean' | 'none'
+  highlight: 'lowest' | 'highest' | 'boolean'
   highlightColor: string
 }
 
@@ -323,7 +323,7 @@ export function HotelComparisonTable({ hotels, query }: HotelComparisonTableProp
 
                     {/* Hotel cells */}
                     {displayHotels.map((hotel) => {
-                      const isBest = bestIds.has(hotel.id) && dim.highlight !== 'none'
+                      const isBest = bestIds.has(hotel.id)
                       return (
                         <td key={hotel.id} className="px-2 py-2">
                           <div className={cn(
