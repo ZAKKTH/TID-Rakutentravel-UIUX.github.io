@@ -2,308 +2,294 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { Sparkles } from 'lucide-react'
-import { ChatMessage } from '@/components/chat-message'
-import { ChatInput } from '@/components/chat-input'
-import { AIQuestion } from '@/components/ai-question'
-import { HotelResultCards } from '@/components/hotel-result-cards'
+import { SemanticSearchInput } from '@/components/semantic-search-input'
+import { HotelResultCards, type HotelData } from '@/components/hotel-result-cards'
 import { ParsedCriteriaDisplay, parseCriteria } from '@/components/parsed-criteria-display'
+import { ChatMessage } from '@/components/chat-message'
 
-interface Hotel {
-  id: string
-  name: string
-  distance: number
-  rating: number
-  reviews: number
-  price: number
-  image: string
-  amenities: string[]
-  description: string
-}
-
-type MessageType =
+type Message =
   | { type: 'user'; content: string }
-  | { type: 'ai-thinking' }
-  | { type: 'ai-criteria'; query: string }
-  | { type: 'ai-question'; questionType: 'date' | 'guests' | 'budget' }
-  | { type: 'ai-results'; hotels: Hotel[] }
-  | { type: 'ai-text'; content: string }
+  | { type: 'thinking' }
+  | { type: 'criteria'; query: string }
+  | { type: 'question'; question: string; options: string[] }
+  | { type: 'results'; hotels: HotelData[]; matchedKeys: string[] }
 
-const mockHotels: Hotel[] = [
+const MOCK_HOTELS: HotelData[] = [
   {
     id: '1',
     name: 'プレミアムシティホテル三島',
-    distance: 2.5,
+    price: 8500,
     rating: 4.6,
     reviews: 248,
-    price: 8500,
+    distance: 2.5,
     image: '🏨',
-    amenities: ['WiFi', 'Breakfast', 'AC'],
-    description: '三島駅から徒歩5分。モダンな客室設備とビジネス向け設施が充実。',
+    hasBreakfast: true,
+    hasWifi: true,
+    hasHotSpring: false,
+    hasSpa: false,
+    hasParking: true,
+    noiseScore: 7,
+    cleanScore: 9,
+    serviceScore: 8,
+    matchScore: 88,
   },
   {
     id: '2',
     name: 'シティホテルミシマ',
-    distance: 3.8,
+    price: 6200,
     rating: 4.2,
     reviews: 156,
-    price: 6200,
-    image: '🏨',
-    amenities: ['WiFi', 'Breakfast'],
-    description: 'アクセスが良く、リーズナブルな価格が魅力。',
+    distance: 3.8,
+    image: '🏩',
+    hasBreakfast: true,
+    hasWifi: true,
+    hasHotSpring: false,
+    hasSpa: false,
+    hasParking: false,
+    noiseScore: 6,
+    cleanScore: 7,
+    serviceScore: 7,
+    matchScore: 70,
+    badge: '格安',
   },
   {
     id: '3',
     name: 'グランドホテル静岡',
-    distance: 4.2,
+    price: 9800,
     rating: 4.4,
     reviews: 312,
-    price: 9800,
-    image: '🏨',
-    amenities: ['WiFi', 'Breakfast', 'AC'],
-    description: '高級感あふれるホテル。温泉大浴場完備。',
+    distance: 4.2,
+    image: '🏰',
+    hasBreakfast: true,
+    hasWifi: true,
+    hasHotSpring: true,
+    hasSpa: false,
+    hasParking: true,
+    noiseScore: 8,
+    cleanScore: 9,
+    serviceScore: 9,
+    matchScore: 82,
   },
   {
     id: '4',
     name: 'ビジネスホテル駅前',
-    distance: 0.3,
+    price: 4800,
     rating: 3.9,
     reviews: 89,
-    price: 4800,
-    image: '🏨',
-    amenities: ['WiFi'],
-    description: '三島駅から最も近いホテル。低価格で駅前ロケーション。',
+    distance: 0.3,
+    image: '🏢',
+    hasBreakfast: false,
+    hasWifi: true,
+    hasHotSpring: false,
+    hasSpa: false,
+    hasParking: false,
+    noiseScore: 5,
+    cleanScore: 7,
+    serviceScore: 6,
+    matchScore: 65,
+    badge: '最寄',
   },
   {
     id: '5',
     name: 'リゾートスパ三島',
-    distance: 4.5,
-    rating: 4.7,
-    reviews: 421,
     price: 12500,
-    image: '🏨',
-    amenities: ['WiFi', 'Breakfast', 'AC'],
-    description: 'スパ施設完備の高級ホテル。',
+    rating: 4.8,
+    reviews: 421,
+    distance: 4.5,
+    image: '🌿',
+    hasBreakfast: true,
+    hasWifi: true,
+    hasHotSpring: true,
+    hasSpa: true,
+    hasParking: true,
+    noiseScore: 10,
+    cleanScore: 10,
+    serviceScore: 10,
+    matchScore: 96,
+    badge: '人気No.1',
   },
 ]
 
-const exampleQueries = [
-  '三島駅 5km以内 朝食付き',
-  '駅前の格安ホテル WiFi完備',
-  '温泉スパ完備 贅沢な環境',
-]
-
 export default function Home() {
-  const [messages, setMessages] = useState<MessageType[]>([])
+  const [messages, setMessages] = useState<Message[]>([])
   const [isLoading, setIsLoading] = useState(false)
-  const [, setCurrentQuery] = useState('')
-  const [, setNeedsDate] = useState(false)
-  const messagesEndRef = useRef<HTMLDivElement>(null)
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }
+  const [pendingMatchedKeys, setPendingMatchedKeys] = useState<string[]>([])
+  const endRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    scrollToBottom()
+    endRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  const handleSend = async (message: string) => {
-    setCurrentQuery(message)
+  const handleSearch = async (raw: string, matchedKeys: string[]) => {
     setIsLoading(true)
+    setPendingMatchedKeys(matchedKeys)
+    setMessages(prev => [...prev, { type: 'user', content: raw }])
 
-    // Add user message
-    setMessages(prev => [...prev, { type: 'user', content: message }])
-
-    // Show thinking state
+    // Thinking
     await new Promise(r => setTimeout(r, 300))
-    setMessages(prev => [...prev, { type: 'ai-thinking' }])
+    setMessages(prev => [...prev, { type: 'thinking' }])
 
-    // Parse and show criteria
-    await new Promise(r => setTimeout(r, 800))
-    setMessages(prev => prev.filter(m => m.type !== 'ai-thinking'))
-    setMessages(prev => [...prev, { type: 'ai-criteria', query: message }])
+    // Criteria
+    await new Promise(r => setTimeout(r, 900))
+    setMessages(prev => prev.filter(m => m.type !== 'thinking'))
+    setMessages(prev => [...prev, { type: 'criteria', query: raw }])
 
-    // Check if date is missing
-    const hasDate = message.includes('今日') || message.includes('今週') || message.includes('来週') || /\d{4}/.test(message)
-
+    // Check for missing date
+    const hasDate = /今日|今週|来週|\d{4}|\d{1,2}月|\d{1,2}日/.test(raw)
     if (!hasDate) {
-      await new Promise(r => setTimeout(r, 500))
-      setNeedsDate(true)
-      setMessages(prev => [...prev, { type: 'ai-question', questionType: 'date' }])
+      await new Promise(r => setTimeout(r, 400))
+      setMessages(prev => [
+        ...prev,
+        {
+          type: 'question',
+          question: '宿泊日はいつ頃をご希望ですか?',
+          options: ['今日', '今週末', '来週', '日付を指定'],
+        },
+      ])
       setIsLoading(false)
       return
     }
 
-    // Show results
+    // Results
     await new Promise(r => setTimeout(r, 600))
-    setMessages(prev => [...prev, { type: 'ai-results', hotels: mockHotels }])
+    setMessages(prev => [...prev, { type: 'results', hotels: MOCK_HOTELS, matchedKeys }])
     setIsLoading(false)
   }
 
-  const handleQuestionAnswer = async (answer: string) => {
-    setNeedsDate(false)
-
-    // Add user answer as message
-    setMessages(prev => [...prev, { type: 'user', content: answer }])
-
-    // Show thinking
+  const handleOptionSelect = async (option: string) => {
     setIsLoading(true)
-    await new Promise(r => setTimeout(r, 500))
-
-    // Show results
-    setMessages(prev => [...prev, { type: 'ai-results', hotels: mockHotels }])
+    setMessages(prev => [...prev, { type: 'user', content: option }])
+    await new Promise(r => setTimeout(r, 700))
+    setMessages(prev => [...prev, { type: 'results', hotels: MOCK_HOTELS, matchedKeys: pendingMatchedKeys }])
     setIsLoading(false)
-  }
-
-  const handleExampleClick = (example: string) => {
-    handleSend(example)
   }
 
   return (
-    <div className="flex flex-col h-screen bg-background">
+    <div className="min-h-screen flex flex-col bg-background">
       {/* Header */}
-      <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
-        <div className="max-w-3xl mx-auto px-4 h-14 flex items-center justify-between">
+      <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
+        <div className="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
               <Sparkles className="w-4 h-4 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="font-bold text-sm">Rakuten Travel AI</h1>
-              <p className="text-[10px] text-muted-foreground">セマンティック検索</p>
+              <h1 className="font-bold text-sm leading-tight">Rakuten Travel AI</h1>
+              <p className="text-[10px] text-muted-foreground leading-tight">セマンティック検索</p>
             </div>
           </div>
-          <div className="text-xs text-muted-foreground">
-            Kaizen UX
-          </div>
+          <span className="text-xs text-muted-foreground hidden sm:block">
+            意図を理解するホテル検索
+          </span>
         </div>
       </header>
 
-      {/* Chat Area */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-3xl mx-auto px-4 py-6">
-          {messages.length === 0 ? (
-            // Welcome State
-            <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-8">
-              <div className="space-y-4">
-                <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto">
-                  <Sparkles className="w-8 h-8 text-primary" />
+      <main className="flex-1 max-w-4xl mx-auto w-full px-4 py-8 space-y-10">
+        {/* ── Search section ── */}
+        <section className="space-y-2">
+          <h2 className="text-xl font-bold">理想のホテルを見つける</h2>
+          <p className="text-sm text-muted-foreground">
+            自然な言葉で条件を入力、またはタグをクリックして組み合わせてください
+          </p>
+          <div className="pt-2">
+            <SemanticSearchInput onSearch={handleSearch} isLoading={isLoading} />
+          </div>
+        </section>
+
+        {/* ── Conversation / results ── */}
+        {messages.length > 0 && (
+          <section className="space-y-4">
+            {messages.map((msg, i) => {
+              if (msg.type === 'user') {
+                return (
+                  <ChatMessage key={i} type="user">
+                    <p className="text-sm">{msg.content}</p>
+                  </ChatMessage>
+                )
+              }
+
+              if (msg.type === 'thinking') {
+                return (
+                  <ChatMessage key={i} type="ai">
+                    <div className="flex items-center gap-2">
+                      <div className="flex gap-1">
+                        <span className="w-2 h-2 rounded-full bg-muted-foreground/40 animate-pulse" style={{ animationDelay: '0ms' }} />
+                        <span className="w-2 h-2 rounded-full bg-muted-foreground/40 animate-pulse" style={{ animationDelay: '150ms' }} />
+                        <span className="w-2 h-2 rounded-full bg-muted-foreground/40 animate-pulse" style={{ animationDelay: '300ms' }} />
+                      </div>
+                      <span className="text-xs text-muted-foreground">検索条件を分析中...</span>
+                    </div>
+                  </ChatMessage>
+                )
+              }
+
+              if (msg.type === 'criteria') {
+                const criteria = parseCriteria(msg.query)
+                return (
+                  <ChatMessage key={i} type="ai">
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium">ご希望の条件を理解しました。</p>
+                      <ParsedCriteriaDisplay criteria={criteria} />
+                    </div>
+                  </ChatMessage>
+                )
+              }
+
+              if (msg.type === 'question') {
+                return (
+                  <ChatMessage key={i} type="ai">
+                    <div className="space-y-3">
+                      <p className="text-sm">{msg.question}</p>
+                      <div className="flex flex-wrap gap-2">
+                        {msg.options.map(opt => (
+                          <button
+                            key={opt}
+                            onClick={() => handleOptionSelect(opt)}
+                            disabled={isLoading}
+                            className="text-xs px-4 py-2 rounded-xl border border-primary/40 bg-primary/5 text-primary font-medium hover:bg-primary/10 hover:border-primary/60 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                          >
+                            {opt}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </ChatMessage>
+                )
+              }
+
+              if (msg.type === 'results') {
+                return (
+                  <ChatMessage key={i} type="ai">
+                    <HotelResultCards hotels={msg.hotels} matchedKeys={msg.matchedKeys} />
+                  </ChatMessage>
+                )
+              }
+
+              return null
+            })}
+            <div ref={endRef} />
+          </section>
+        )}
+
+        {/* ── Empty state guidance ── */}
+        {messages.length === 0 && (
+          <section className="space-y-3">
+            <p className="text-xs font-semibold uppercase text-muted-foreground">使い方のヒント</p>
+            <div className="grid sm:grid-cols-3 gap-3">
+              {[
+                { title: 'タグをクリック', desc: '下のタグをクリックすると検索欄に自動挿入されます' },
+                { title: '自由に入力', desc: '認識されたキーワードはハイライト表示されます' },
+                { title: 'AIが解釈', desc: 'Enterで検索。AIがあなたの意図をリアルタイムで表示' },
+              ].map(h => (
+                <div key={h.title} className="p-4 rounded-xl border border-border bg-card space-y-1">
+                  <p className="text-sm font-semibold">{h.title}</p>
+                  <p className="text-xs text-muted-foreground leading-relaxed">{h.desc}</p>
                 </div>
-                <h2 className="text-2xl font-bold text-balance">
-                  理想のホテルを1行で検索
-                </h2>
-                <p className="text-muted-foreground max-w-md text-sm">
-                  自然な言葉で条件を入力してください。AIが意図を理解し、最適な宿泊施設を提案します。
-                </p>
-              </div>
-
-              <div className="space-y-3 w-full max-w-md">
-                <p className="text-xs font-medium text-muted-foreground uppercase">例えば...</p>
-                <div className="flex flex-col gap-2">
-                  {exampleQueries.map((example) => (
-                    <button
-                      key={example}
-                      onClick={() => handleExampleClick(example)}
-                      className="w-full text-left px-4 py-3 rounded-xl border border-border bg-secondary/30 hover:bg-secondary/60 hover:border-primary/30 transition-all text-sm"
-                    >
-                      {example}
-                    </button>
-                  ))}
-                </div>
-                <p className="text-xs text-muted-foreground pt-1">
-                  左下の ^ ボタンからタグで細かい条件を組み合わせることもできます
-                </p>
-              </div>
+              ))}
             </div>
-          ) : (
-            // Chat Messages
-            <div className="space-y-4">
-              {messages.map((message, index) => {
-                switch (message.type) {
-                  case 'user':
-                    return (
-                      <ChatMessage key={index} type="user">
-                        <p className="text-sm">{message.content}</p>
-                      </ChatMessage>
-                    )
-
-                  case 'ai-thinking':
-                    return (
-                      <ChatMessage key={index} type="ai">
-                        <div className="flex items-center gap-2">
-                          <div className="flex gap-1">
-                            <span className="w-2 h-2 rounded-full bg-muted-foreground/40 animate-pulse" />
-                            <span className="w-2 h-2 rounded-full bg-muted-foreground/40 animate-pulse delay-75" />
-                            <span className="w-2 h-2 rounded-full bg-muted-foreground/40 animate-pulse delay-150" />
-                          </div>
-                          <span className="text-xs text-muted-foreground">検索条件を分析中...</span>
-                        </div>
-                      </ChatMessage>
-                    )
-
-                  case 'ai-criteria':
-                    const criteria = parseCriteria(message.query)
-                    return (
-                      <ChatMessage key={index} type="ai">
-                        <div className="space-y-3">
-                          <p className="text-sm">ご希望の条件を理解しました。</p>
-                          <ParsedCriteriaDisplay criteria={criteria} />
-                        </div>
-                      </ChatMessage>
-                    )
-
-                  case 'ai-question':
-                    return (
-                      <ChatMessage key={index} type="ai">
-                        {message.questionType === 'date' && (
-                          <AIQuestion
-                            question="宿泊日はいつ頃をご希望ですか?"
-                            options={[
-                              { label: '今日', value: '今日' },
-                              { label: '今週末', value: '今週末' },
-                              { label: '来週', value: '来週' },
-                            ]}
-                            onSelect={handleQuestionAnswer}
-                            showDatePicker
-                          />
-                        )}
-                      </ChatMessage>
-                    )
-
-                  case 'ai-results':
-                    return (
-                      <ChatMessage key={index} type="ai">
-                        <HotelResultCards hotels={message.hotels} />
-                      </ChatMessage>
-                    )
-
-                  case 'ai-text':
-                    return (
-                      <ChatMessage key={index} type="ai">
-                        <p className="text-sm">{message.content}</p>
-                      </ChatMessage>
-                    )
-
-                  default:
-                    return null
-                }
-              })}
-              <div ref={messagesEndRef} />
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Input Area */}
-      <div className="sticky bottom-0 bg-linear-to-t from-background via-background to-transparent pt-4">
-        <div className="max-w-3xl mx-auto">
-          <ChatInput
-            onSend={handleSend}
-            isLoading={isLoading}
-            placeholder="例: 三島駅 5km以内 朝食付き ダブルベッド"
-          />
-        </div>
-      </div>
+          </section>
+        )}
+      </main>
     </div>
   )
 }
