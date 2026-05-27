@@ -1,6 +1,6 @@
 'use client'
 
-import { Star, MapPin, Wifi, Coffee, Waves, Sparkles, Car } from 'lucide-react'
+import { Star, Wifi, Coffee, Waves, Sparkles, Car } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export interface HotelData {
