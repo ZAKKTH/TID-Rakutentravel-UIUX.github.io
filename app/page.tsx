@@ -1,125 +1,309 @@
 'use client'
 
-import { useState } from 'react'
-import { Sparkles, Loader2 } from 'lucide-react'
-import { TagPoolBuilder, type Tag } from '@/components/tag-pool-builder'
-import { SearchResultsView } from '@/components/search-results-view'
+import { useState, useRef, useEffect } from 'react'
+import { Sparkles } from 'lucide-react'
+import { ChatMessage } from '@/components/chat-message'
+import { ChatInput } from '@/components/chat-input'
+import { AIQuestion } from '@/components/ai-question'
+import { HotelResultCards } from '@/components/hotel-result-cards'
+import { ParsedCriteriaDisplay, parseCriteria } from '@/components/parsed-criteria-display'
 
-type Phase = 'builder' | 'loading' | 'results'
-
-interface SearchState {
-  tags: Tag[]
-  prefecture: string
-  area: string
+interface Hotel {
+  id: string
+  name: string
+  distance: number
+  rating: number
+  reviews: number
+  price: number
+  image: string
+  amenities: string[]
+  description: string
 }
 
-export default function Home() {
-  const [phase, setPhase] = useState<Phase>('builder')
-  const [search, setSearch] = useState<SearchState | null>(null)
+type MessageType =
+  | { type: 'user'; content: string }
+  | { type: 'ai-thinking' }
+  | { type: 'ai-criteria'; query: string }
+  | { type: 'ai-question'; questionType: 'date' | 'guests' | 'budget' }
+  | { type: 'ai-results'; hotels: Hotel[] }
+  | { type: 'ai-text'; content: string }
 
-  const handleSearch = async (tags: Tag[], prefecture: string, area: string) => {
-    setSearch({ tags, prefecture, area })
-    setPhase('loading')
-    // Simulate search latency
-    await new Promise(r => setTimeout(r, 1400))
-    setPhase('results')
+const mockHotels: Hotel[] = [
+  {
+    id: '1',
+    name: 'プレミアムシティホテル三島',
+    distance: 2.5,
+    rating: 4.6,
+    reviews: 248,
+    price: 8500,
+    image: '🏨',
+    amenities: ['WiFi', 'Breakfast', 'AC'],
+    description: '三島駅から徒歩5分。モダンな客室設備とビジネス向け設施が充実。',
+  },
+  {
+    id: '2',
+    name: 'シティホテルミシマ',
+    distance: 3.8,
+    rating: 4.2,
+    reviews: 156,
+    price: 6200,
+    image: '🏨',
+    amenities: ['WiFi', 'Breakfast'],
+    description: 'アクセスが良く、リーズナブルな価格が魅力。',
+  },
+  {
+    id: '3',
+    name: 'グランドホテル静岡',
+    distance: 4.2,
+    rating: 4.4,
+    reviews: 312,
+    price: 9800,
+    image: '🏨',
+    amenities: ['WiFi', 'Breakfast', 'AC'],
+    description: '高級感あふれるホテル。温泉大浴場完備。',
+  },
+  {
+    id: '4',
+    name: 'ビジネスホテル駅前',
+    distance: 0.3,
+    rating: 3.9,
+    reviews: 89,
+    price: 4800,
+    image: '🏨',
+    amenities: ['WiFi'],
+    description: '三島駅から最も近いホテル。低価格で駅前ロケーション。',
+  },
+  {
+    id: '5',
+    name: 'リゾートスパ三島',
+    distance: 4.5,
+    rating: 4.7,
+    reviews: 421,
+    price: 12500,
+    image: '🏨',
+    amenities: ['WiFi', 'Breakfast', 'AC'],
+    description: 'スパ施設完備の高級ホテル。',
+  },
+]
+
+const exampleQueries = [
+  '三島駅 5km以内 朝食付き',
+  '駅前の格安ホテル WiFi完備',
+  '温泉スパ完備 贅沢な環境',
+]
+
+export default function Home() {
+  const [messages, setMessages] = useState<MessageType[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [, setCurrentQuery] = useState('')
+  const [, setNeedsDate] = useState(false)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }
+
+  useEffect(() => {
+    scrollToBottom()
+  }, [messages])
+
+  const handleSend = async (message: string) => {
+    setCurrentQuery(message)
+    setIsLoading(true)
+
+    // Add user message
+    setMessages(prev => [...prev, { type: 'user', content: message }])
+
+    // Show thinking state
+    await new Promise(r => setTimeout(r, 300))
+    setMessages(prev => [...prev, { type: 'ai-thinking' }])
+
+    // Parse and show criteria
+    await new Promise(r => setTimeout(r, 800))
+    setMessages(prev => prev.filter(m => m.type !== 'ai-thinking'))
+    setMessages(prev => [...prev, { type: 'ai-criteria', query: message }])
+
+    // Check if date is missing
+    const hasDate = message.includes('今日') || message.includes('今週') || message.includes('来週') || /\d{4}/.test(message)
+
+    if (!hasDate) {
+      await new Promise(r => setTimeout(r, 500))
+      setNeedsDate(true)
+      setMessages(prev => [...prev, { type: 'ai-question', questionType: 'date' }])
+      setIsLoading(false)
+      return
+    }
+
+    // Show results
+    await new Promise(r => setTimeout(r, 600))
+    setMessages(prev => [...prev, { type: 'ai-results', hotels: mockHotels }])
+    setIsLoading(false)
+  }
+
+  const handleQuestionAnswer = async (answer: string) => {
+    setNeedsDate(false)
+
+    // Add user answer as message
+    setMessages(prev => [...prev, { type: 'user', content: answer }])
+
+    // Show thinking
+    setIsLoading(true)
+    await new Promise(r => setTimeout(r, 500))
+
+    // Show results
+    setMessages(prev => [...prev, { type: 'ai-results', hotels: mockHotels }])
+    setIsLoading(false)
+  }
+
+  const handleExampleClick = (example: string) => {
+    handleSend(example)
   }
 
   return (
-    <div className="flex flex-col h-screen bg-background overflow-hidden">
-
+    <div className="flex flex-col h-screen bg-background">
       {/* Header */}
-      <header className="shrink-0 h-14 border-b border-border bg-background/95 backdrop-blur z-40 flex items-center px-5">
-        <div className="flex items-center gap-2.5 flex-1">
-          <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center shrink-0">
-            <Sparkles className="w-3.5 h-3.5 text-primary-foreground" />
-          </div>
-          <div className="leading-none">
-            <p className="text-sm font-bold tracking-tight">Rakuten Travel AI</p>
-            <p className="text-[10px] text-muted-foreground">One-shot Tag Search</p>
-          </div>
-        </div>
-
-        {/* Phase indicator */}
-        <div className="flex items-center gap-3">
-          {(['builder', 'results'] as const).map((p, i) => (
-            <div key={p} className="flex items-center gap-1.5">
-              <div className={[
-                'w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold border transition-all',
-                phase === 'results' || (phase === 'loading' && p === 'builder')
-                  ? p === 'builder'
-                    ? 'bg-foreground text-background border-foreground'
-                    : phase === 'results' ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground'
-                  : p === 'builder'
-                    ? 'bg-primary text-primary-foreground border-primary'
-                    : 'border-border text-muted-foreground'
-              ].join(' ')}>
-                {i + 1}
-              </div>
-              <span className="text-xs text-muted-foreground hidden sm:inline">
-                {p === 'builder' ? '条件設定' : '検索結果'}
-              </span>
-              {i === 0 && (
-                <span className="text-muted-foreground/40 text-xs mx-0.5 hidden sm:inline">›</span>
-              )}
+      <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
+        <div className="max-w-3xl mx-auto px-4 h-14 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+              <Sparkles className="w-4 h-4 text-primary-foreground" />
             </div>
-          ))}
+            <div>
+              <h1 className="font-bold text-sm">Rakuten Travel AI</h1>
+              <p className="text-[10px] text-muted-foreground">セマンティック検索</p>
+            </div>
+          </div>
+          <div className="text-xs text-muted-foreground">
+            Kaizen UX
+          </div>
         </div>
       </header>
 
-      {/* Body */}
-      <main className="flex-1 overflow-hidden relative">
-
-        {/* Builder phase */}
-        {(phase === 'builder' || phase === 'loading') && (
-          <div className={[
-            'h-full transition-all duration-500',
-            phase === 'loading' ? 'opacity-30 pointer-events-none scale-[0.99]' : 'opacity-100 scale-100'
-          ].join(' ')}>
-            <TagPoolBuilder onSearch={handleSearch} />
-          </div>
-        )}
-
-        {/* Loading overlay */}
-        {phase === 'loading' && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-5 z-10">
-            <div className="w-14 h-14 rounded-2xl bg-background border border-border shadow-xl flex items-center justify-center">
-              <Loader2 className="w-7 h-7 text-primary animate-spin" />
-            </div>
-            <div className="text-center space-y-1">
-              <p className="text-sm font-semibold text-foreground">検索中...</p>
-              <p className="text-xs text-muted-foreground">
-                {search?.tags.map(t => t.label).join(' · ')} を分析しています
-              </p>
-            </div>
-            {/* Tag progress chips */}
-            {search && (
-              <div className="flex flex-wrap gap-2 justify-center max-w-xs">
-                {search.tags.map((tag, i) => (
-                  <span
-                    key={tag.id}
-                    className="text-xs px-2.5 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 font-medium"
-                    style={{ animationDelay: `${i * 80}ms` }}
-                  >
-                    {tag.icon} {tag.label}
-                  </span>
-                ))}
+      {/* Chat Area */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-3xl mx-auto px-4 py-6">
+          {messages.length === 0 ? (
+            // Welcome State
+            <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-8">
+              <div className="space-y-4">
+                <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto">
+                  <Sparkles className="w-8 h-8 text-primary" />
+                </div>
+                <h2 className="text-2xl font-bold text-balance">
+                  理想のホテルを1行で検索
+                </h2>
+                <p className="text-muted-foreground max-w-md text-sm">
+                  自然な言葉で条件を入力してください。AIが意図を理解し、最適な宿泊施設を提案します。
+                </p>
               </div>
-            )}
-          </div>
-        )}
 
-        {/* Results phase */}
-        {phase === 'results' && search && (
-          <div className="h-full overflow-auto animate-in fade-in slide-in-from-bottom-2 duration-500">
-            <SearchResultsView
-              tags={search.tags}
-              prefecture={search.prefecture}
-              area={search.area}
-            />
-          </div>
-        )}
-      </main>
+              <div className="space-y-3 w-full max-w-md">
+                <p className="text-xs font-medium text-muted-foreground uppercase">例えば...</p>
+                <div className="flex flex-col gap-2">
+                  {exampleQueries.map((example) => (
+                    <button
+                      key={example}
+                      onClick={() => handleExampleClick(example)}
+                      className="w-full text-left px-4 py-3 rounded-xl border border-border bg-secondary/30 hover:bg-secondary/60 hover:border-primary/30 transition-all text-sm"
+                    >
+                      {example}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground pt-1">
+                  左下の ^ ボタンからタグで細かい条件を組み合わせることもできます
+                </p>
+              </div>
+            </div>
+          ) : (
+            // Chat Messages
+            <div className="space-y-4">
+              {messages.map((message, index) => {
+                switch (message.type) {
+                  case 'user':
+                    return (
+                      <ChatMessage key={index} type="user">
+                        <p className="text-sm">{message.content}</p>
+                      </ChatMessage>
+                    )
+
+                  case 'ai-thinking':
+                    return (
+                      <ChatMessage key={index} type="ai">
+                        <div className="flex items-center gap-2">
+                          <div className="flex gap-1">
+                            <span className="w-2 h-2 rounded-full bg-muted-foreground/40 animate-pulse" />
+                            <span className="w-2 h-2 rounded-full bg-muted-foreground/40 animate-pulse delay-75" />
+                            <span className="w-2 h-2 rounded-full bg-muted-foreground/40 animate-pulse delay-150" />
+                          </div>
+                          <span className="text-xs text-muted-foreground">検索条件を分析中...</span>
+                        </div>
+                      </ChatMessage>
+                    )
+
+                  case 'ai-criteria':
+                    const criteria = parseCriteria(message.query)
+                    return (
+                      <ChatMessage key={index} type="ai">
+                        <div className="space-y-3">
+                          <p className="text-sm">ご希望の条件を理解しました。</p>
+                          <ParsedCriteriaDisplay criteria={criteria} />
+                        </div>
+                      </ChatMessage>
+                    )
+
+                  case 'ai-question':
+                    return (
+                      <ChatMessage key={index} type="ai">
+                        {message.questionType === 'date' && (
+                          <AIQuestion
+                            question="宿泊日はいつ頃をご希望ですか?"
+                            options={[
+                              { label: '今日', value: '今日' },
+                              { label: '今週末', value: '今週末' },
+                              { label: '来週', value: '来週' },
+                            ]}
+                            onSelect={handleQuestionAnswer}
+                            showDatePicker
+                          />
+                        )}
+                      </ChatMessage>
+                    )
+
+                  case 'ai-results':
+                    return (
+                      <ChatMessage key={index} type="ai">
+                        <HotelResultCards hotels={message.hotels} />
+                      </ChatMessage>
+                    )
+
+                  case 'ai-text':
+                    return (
+                      <ChatMessage key={index} type="ai">
+                        <p className="text-sm">{message.content}</p>
+                      </ChatMessage>
+                    )
+
+                  default:
+                    return null
+                }
+              })}
+              <div ref={messagesEndRef} />
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Input Area */}
+      <div className="sticky bottom-0 bg-linear-to-t from-background via-background to-transparent pt-4">
+        <div className="max-w-3xl mx-auto">
+          <ChatInput
+            onSend={handleSend}
+            isLoading={isLoading}
+            placeholder="例: 三島駅 5km以内 朝食付き ダブルベッド"
+          />
+        </div>
+      </div>
     </div>
   )
 }
